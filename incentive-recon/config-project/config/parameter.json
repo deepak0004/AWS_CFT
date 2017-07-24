@@ -1,0 +1,10 @@
+[
+   {
+      "ParameterKey": "DynamoReadCapacityUnits",
+      "ParameterValue": "5"
+   },
+   {
+      "ParameterKey": "DynamoWriteCapacityUnits",
+      "ParameterValue": "5"
+   }
+]

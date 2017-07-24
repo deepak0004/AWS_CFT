@@ -1,0 +1,117 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+
+    "Description": "Lambda Scheduler",
+
+    "Parameters": 
+    {
+        "namePrefix": {
+          "Description": "The name-prefix to be used",
+          "Type": "String",
+          "MinLength": "1",
+          "MaxLength": "300"
+        },
+       "metaDataBucket": {
+          "Description": "code bucket",
+          "Type": "String",
+          "MinLength": "1",
+          "MaxLength": "300"
+        },
+        "metaDataPath": {
+          "Description": "path",
+          "Type": "String",
+          "MinLength": "1",
+          "MaxLength": "300"
+        },
+        "serviceRole": {
+          "Description": "Service Role ARN for resource access",
+          "Type": "String",
+          "MinLength": "1",
+          "MaxLength": "300"
+        },
+        "schedulerexp": {
+           "Description": "Scheduler_Exp",
+           "Type": "String",
+        }
+    },
+
+    "Resources": 
+    {
+         "HelloWorldFn": 
+         {
+              "Type": "AWS::Lambda::Function",
+              "Properties": 
+              {
+                "Handler": "com.expedia.globalpayments.incentiverecon.PointsReconciliationHandler",
+                "Role": {
+                  "Ref": "serviceRole"
+                },
+                "Code": 
+                {
+                   "S3Bucket": 
+                   {
+                     "Ref": "metaDataBucket"
+                   },
+                   "S3Key":
+                   {
+                      "Fn::Join": [
+                          "/",
+                          [
+                            {
+                              "Ref": "metaDataPath"
+                            },   
+                            "incentivereconV2-0.1.0-SNAPSHOT.jar"
+                          ]
+                        ]
+                   }
+                },
+                "Runtime": "java8",
+                "FunctionName" : {"Fn::Join": ["", [{"Ref": "namePrefix"}, "-", "PointsConsumerHandler"]] }, 
+                "Environment": 
+                {
+                  "Variables" : 
+                  { 
+                   "NAME_PREFIX" : { "Ref": "namePrefix" }
+                  }
+                },
+                "MemorySize" : "1024"
+              }
+        }, 
+        "TagWatcherRule": {
+          "Type": "AWS::Events::Rule",
+          "Properties": {
+            "ScheduleExpression": { "Ref": "schedulerexp" },
+            "Targets": [
+              {
+                "Id": "TagWatcherScheduler",
+                "Arn": {
+                  "Fn::GetAtt": [
+                    "HelloWorldFn",
+                    "Arn"
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "InvokeLambdaPermission": {
+          "Type": "AWS::Lambda::Permission",
+          "Properties": {
+            "FunctionName": {
+              "Fn::GetAtt": [
+                "HelloWorldFn",
+                "Arn"
+              ]
+            },
+            "Action": "lambda:InvokeFunction",
+            "Principal": "events.amazonaws.com",
+            "SourceArn": {
+              "Fn::GetAtt": [
+                "TagWatcherRule",
+                "Arn"
+              ]
+            }
+          }
+        }
+    },
+}

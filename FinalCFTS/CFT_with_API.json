@@ -1,0 +1,126 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+
+    "Description": "API part which is done manually (not supported by MAUI)",
+
+    "Parameters": 
+    {
+        "namePrefix": {
+          "Description": "The name-prefix to be used",
+          "Type": "String",
+          "MinLength": "1",
+          "MaxLength": "300"
+        },
+        "stagenamee": {
+          "Description": "The stage name to be used",
+          "Type": "String"
+        },
+    },
+
+    "Resources": 
+    { 
+      "GreetingApi": 
+      {
+        "Type": "AWS::ApiGateway::RestApi",
+        "Properties": 
+        {
+          "Name": {"Fn::Join": ["", [{"Ref": "namePrefix"}, "-", "pointsTransactions"]] },
+          "Description": "API used for Greeting requests",
+          "FailOnWarnings": true
+        }
+      },
+
+     "LambdaPermission": 
+     {
+       "Type": "AWS::Lambda::Permission",
+       "Properties": 
+       {
+        "Action": "lambda:invokeFunction",
+        "FunctionName": "arn:aws:lambda:us-west-2:769348183957:function:awsfnt-defaultteam-irstack-PointsConsumerHandler",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {"Fn::Join": ["", ["arn:aws:execute-api:", {"Ref": "AWS::Region"}, ":", {"Ref": "AWS::AccountId"}, ":", {"Ref": "GreetingApi"}, "/*"]]}
+       }
+     },
+
+     "GreetingApiStage": 
+     {
+       "Type": "AWS::ApiGateway::Stage",
+       "Properties": 
+       {
+          "DeploymentId": {"Ref": "ApiDeployment"},
+          "RestApiId": {"Ref": "GreetingApi"},
+          "StageName": {"Ref": "stagenamee"}
+       }
+     },
+
+   "ApiDeployment": 
+   {
+     "Type": "AWS::ApiGateway::Deployment",
+     "DependsOn": ["GreetingRequest"],
+     "Properties": 
+     {
+       "RestApiId": {"Ref": "GreetingApi"},
+       "StageName": "DummyStage"
+     }
+   },
+
+   "GreetingResource": 
+   {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties":   
+      {
+        "RestApiId": {"Ref": "GreetingApi"},
+        "ParentId": {"Fn::GetAtt": ["GreetingApi", "RootResourceId"]},
+        "PathPart": "pointsTransactions"
+      }
+   },
+
+   "GreetingRequest": 
+   {
+      "DependsOn": "LambdaPermission",
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": 
+      {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "POST",
+        "Integration": 
+        {
+          "Type": "AWS",
+          "IntegrationHttpMethod": "POST",
+          "Uri": 
+          {
+            "Fn::Join": 
+            ["",
+            ["arn:aws:apigateway:", {"Ref": "AWS::Region"}, ":lambda:path/2015-03-31/functions/", "arn:aws:lambda:us-west-2:769348183957:function:awsfnt-defaultteam-irstack-PointsConsumerHandler", "/invocations"]
+            ]
+          },
+          "IntegrationResponses": 
+          [{
+            "StatusCode": 200
+          }],
+        },
+        "ResourceId": 
+        {
+          "Ref": "GreetingResource"
+        },
+        "RestApiId": 
+        {
+          "Ref": "GreetingApi"
+        },
+        "MethodResponses": 
+        [{
+          "StatusCode": 200
+        }]
+      }
+    }
+  },
+
+    "Outputs": 
+    {   
+      "RootUrl": 
+      {
+        "Description": "Root URL of the API gateway",
+        "Value": {"Fn::Join": ["", ["https://", {"Ref": "GreetingApi"}, ".execute-api.", {"Ref": "AWS::Region"}, ".amazonaws.com"]]}
+      }
+    }
+}

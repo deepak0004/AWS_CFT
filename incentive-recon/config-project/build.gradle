@@ -1,0 +1,38 @@
+apply plugin: 'java'
+apply plugin: 'maven-publish'
+buildscript {
+    repositories {
+        mavenCentral()
+        maven { url "http://nexus.sb.karmalab.net/nexus/content/repositories/central/" }
+        maven { url 'http://nexuslab.alm/nexus/content/groups/public' }
+    }
+    dependencies {
+        classpath 'com.amazonaws:aws-java-sdk-core:1.11.5'
+    }
+}
+
+task assembleArtifact(type: Zip, group: 'cloudformation') {
+    from 'config'
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            groupId 'com.expedia.globalpayments'
+            artifactId 'IRCloudStackParams'
+            version '0.1.8'
+
+            artifact source: assembleArtifact, extension: 'zip'
+        }
+    }
+    repositories {
+        maven {
+            url "s3://sphinx-cn-lab-maven-artifact-bucket"
+            credentials(AwsCredentials) {
+                def defaultCredentials = new com.amazonaws.auth.DefaultAWSCredentialsProviderChain().getCredentials()
+                accessKey defaultCredentials.getAWSAccessKeyId()
+                secretKey defaultCredentials.getAWSSecretKey()
+            }
+        }
+    }
+}
